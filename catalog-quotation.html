@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Catalog & Quotation Builder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F6F5F2;
+    --ink: #232323;
+    --muted: #6E6A62;
+    --accent: #D4A017;
+    --card: #FFFFFF;
+    --line: #E4E1D8;
+    --navy: #101B6B;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 18px 5vw;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.02em; }
+  header .tag { color: var(--accent); font-size: 0.8rem; }
+
+  .layout {
+    display: flex;
+    gap: 24px;
+    padding: 24px 5vw;
+    align-items: flex-start;
+  }
+  .main { flex: 1; min-width: 0; }
+  .cart-panel {
+    width: 340px;
+    flex-shrink: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    position: sticky;
+    top: 20px;
+  }
+
+  /* ---- category picker ---- */
+  .category-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cat-btn {
+    padding: 10px 20px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: var(--card);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .cat-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .cat-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ---- product cards ---- */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .product-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .product-card img.thumb {
+    width: 100%;
+    height: 140px;
+    object-fit: contain;
+    background: #fafafa;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .product-card h3 { font-size: 1.05rem; margin-bottom: 2px; }
+  .product-card .model { color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; }
+  .product-card label { display: block; font-size: 0.75rem; color: var(--muted); margin: 8px 0 4px; }
+  .product-card select {
+    width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+    font-size: 0.85rem;
+  }
+  .spec-line { font-size: 0.78rem; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .price { font-weight: 700; font-size: 1.05rem; }
+  .add-btn {
+    background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+    border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+  }
+  .add-btn:hover { opacity: 0.9; }
+
+  /* ---- cart ---- */
+  .cart-panel h2 { font-size: 1rem; margin-bottom: 12px; }
+  .cart-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; gap: 8px; }
+  .cart-item img.cart-thumb { width: 44px; height: 44px; object-fit: contain; background: #fafafa; border-radius: 4px; flex-shrink: 0; }
+  .cart-item .details { flex: 1; }
+  .cart-item .name { font-weight: 600; }
+  .cart-item .variant { color: var(--muted); font-size: 0.75rem; }
+  .cart-item .qty-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .cart-item .qty-row button { width: 20px; height: 20px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+  .cart-item .qty-row span { font-size: 0.78rem; min-width: 16px; text-align: center; }
+  .cart-item .remove { background: none; border: none; color: #b3261e; cursor: pointer; font-size: 0.75rem; }
+  .cart-total { display: flex; justify-content: space-between; font-weight: 700; margin-top: 12px; padding-top: 12px; border-top: 2px solid var(--ink); }
+  .print-btn {
+    width: 100%; margin-top: 14px; padding: 10px; background: var(--ink); color: #fff;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: 600;
+  }
+  .empty-cart { color: var(--muted); font-size: 0.85rem; }
+
+  /* ---- formal print quotation template (mirrors the sample layout) ---- */
+  #printTemplate { display: none; }
+  .q-topbar { background: var(--navy); height: 22px; }
+  .q-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; }
+  .q-header .brand h1 { color: var(--navy); font-size: 1.6rem; letter-spacing: 0.02em; }
+  .q-header .brand .slogan { color: var(--muted); font-size: 0.75rem; font-style: italic; }
+  .q-header .title { color: var(--navy); font-size: 1.4rem; font-weight: 700; }
+  .q-meta-block { display: flex; border: 1px solid #000; margin: 0 20px; }
+  .q-meta-left, .q-meta-right { padding: 8px 12px; font-size: 0.78rem; line-height: 1.5; }
+  .q-meta-left { flex: 1; border-right: 1px solid #000; }
+  .q-meta-right { width: 300px; }
+  .q-meta-right table { width: 100%; border-collapse: collapse; }
+  .q-meta-right td { border: 1px solid #000; padding: 2px 6px; }
+  .q-section-bar { background: var(--navy); color: #fff; font-weight: 700; font-size: 0.8rem; padding: 4px 12px; margin: 10px 20px 0; }
+  .q-billship { display: flex; margin: 0 20px; border: 1px solid #000; border-top: none; }
+  .q-billship > div { flex: 1; padding: 8px 12px; font-size: 0.78rem; line-height: 1.5; }
+  .q-billship > div:first-child { border-right: 1px solid #000; }
+  .q-table { width: calc(100% - 40px); margin: 14px 20px; border-collapse: collapse; font-size: 0.75rem; }
+  .q-table th { background: var(--navy); color: #fff; padding: 6px; border: 1px solid #000; }
+  .q-table td { padding: 6px; border: 1px solid #000; text-align: center; vertical-align: middle; }
+  .q-table td.desc { text-align: left; }
+  .q-table img.q-thumb { width: 50px; height: 50px; object-fit: contain; }
+  .q-table tfoot td { font-weight: 700; }
+  .q-footer-note { margin: 20px; font-size: 0.72rem; color: var(--muted); }
+
+  @media print {
+    body * { visibility: hidden; }
+    #printTemplate, #printTemplate * { visibility: visible; }
+    #printTemplate { display: block; position: absolute; top: 0; left: 0; width: 100%; }
+    .q-table img, .q-topbar, .q-section-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EDISON <span style="color:var(--accent)">AMP</span></h1>
+  <div class="tag">QUOTATION BUILDER — PROTOTYPE</div>
+</header>
+
+<div class="layout">
+  <div class="main">
+    <div class="category-row">
+      <button class="cat-btn active" data-cat="indoor">Indoor Lights</button>
+      <button class="cat-btn" data-cat="outdoor" disabled>Outdoor Lights (coming soon)</button>
+    </div>
+
+    <div class="product-grid" id="productGrid"></div>
+  </div>
+
+  <div class="cart-panel">
+    <h2>Quotation (<span id="cartCount">0</span> items)</h2>
+    <div id="cartItems"><div class="empty-cart">No items added yet.</div></div>
+    <div class="cart-total" id="cartTotalRow" style="display:none;">
+      <span>Total (excl. GST)</span><span id="cartTotal">₹0</span>
+    </div>
+    <button class="print-btn" onclick="printQuotation()">Print Quotation</button>
+  </div>
+</div>
+
+<!-- ================= formal print template (hidden on screen) ================= -->
+<div id="printTemplate">
+  <div class="q-topbar"></div>
+  <div class="q-header">
+    <div class="brand">
+      <h1>EDISON <span style="color:#D4A017">AMP</span></h1>
+      <div class="slogan">Did Right, To Bright</div>
+    </div>
+    <div class="title">Quotation</div>
+  </div>
+
+  <div class="q-meta-block">
+    <div class="q-meta-left">
+      <strong>EDISON AMP TECHNOLOGIES</strong><br>
+      [Your company address line 1]<br>
+      [City, State, PIN]<br>
+      <strong>GST NO: [your GSTIN]</strong>
+    </div>
+    <div class="q-meta-right">
+      <table>
+        <tr><td>Page:</td><td>1 of 1</td></tr>
+        <tr><td>Date:</td><td id="q-date"></td></tr>
+        <tr><td>Date of Expiry:</td><td id="q-expiry"></td></tr>
+        <tr><td>Quotation #:</td><td id="q-quoteno"></td></tr>
+        <tr><td>Customer ID:</td><td></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="q-section-bar" style="display:flex;">
+    <span style="flex:1;">Bill To</span><span style="flex:1;">Ship To</span>
+  </div>
+  <div class="q-billship">
+    <div>[Customer name]<br>[Customer address]<br>[City]</div>
+    <div>[Customer name]<br>[Customer address]<br>[City]</div>
+  </div>
+
+  <div class="q-section-bar">Shipment Information</div>
+  <div class="q-billship">
+    <div>
+      P.O. #: <br>
+      Currency: INR<br>
+      Payment Terms: 100% Advance
+    </div>
+    <div>
+      Delivery terms: [X working days]<br>
+      Warranty: [X Years]<br>
+      Installation: Extra
+    </div>
+  </div>
+
+  <table class="q-table">
+    <thead>
+      <tr>
+        <th>SI No.</th>
+        <th>Description</th>
+        <th>Product Image</th>
+        <th>HSN Code</th>
+        <th>UOM</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>GST</th>
+        <th>Line Total</th>
+      </tr>
+    </thead>
+    <tbody id="q-table-body"></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="8" style="text-align:right;">Total</td>
+        <td id="q-grand-total"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="q-footer-note">This is a computer-generated quotation. Prices exclude installation and freight unless stated above.</div>
+</div>
+
+<script>
+// ---- extracted catalog data ----
+const PRODUCTS = [
+  {
+    name: "QUICK", model: "AIR-012", feature: "Front Openable", hsn: "9405",
+    image: "product-images/quick.png",
+    variants: [
+      { power: "7W", dim: "D72xH42mm", cutout: "Ø65mm", lumens: "700LM", price: 1247 },
+      { power: "12W", dim: "D82xH47mm", cutout: "Ø75mm", lumens: "1200LM", price: 1750 },
+      { power: "18W", dim: "D92xH57mm", cutout: "Ø85mm", lumens: "1800LM", price: 2204 }
+    ]
+  },
+  {
+    name: "QUICK TRIMLESS", model: "AIR-012", feature: "Front Openable, White Trim", hsn: "9405",
+    image: "product-images/quick-trimless.png",
+    variants: [
+      { power: "7W", dim: "D115xH42mm", cutout: "Ø65mm", lumens: "700LM", price: 1722 },
+      { power: "12W", dim: "D125xH47mm", cutout: "Ø75mm", lumens: "1200LM", price: 2263 },
+      { power: "18W", dim: "D135xH57mm", cutout: "Ø85mm", lumens: "1800LM", price: 2980 }
+    ]
+  },
+  {
+    name: "REGAL", model: "AIR-009", feature: "Recessed", hsn: "9405",
+    image: "product-images/regal.png",
+    variants: [
+      { power: "8W", dim: "D66xH52mm", cutout: "Ø60mm", lumens: "760LM", price: 1771 },
+      { power: "15W", dim: "D80.5xH62mm", cutout: "Ø75mm", lumens: "1425LM", price: 2327 },
+      { power: "20W", dim: "D92xH67mm", cutout: "Ø85mm", lumens: "1900LM", price: 3064 }
+    ]
+  }
+];
+
+const GST_RATE = 18;
+let cart = [];
+
+function renderProducts() {
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = PRODUCTS.map((p, pi) => `
+    <div class="product-card">
+      <img class="thumb" src="${p.image}" alt="${p.name}">
+      <h3>${p.name}</h3>
+      <div class="model">${p.model} — ${p.feature}</div>
+      <label>Select variant</label>
+      <select id="variant-${pi}">
+        ${p.variants.map((v, vi) => `<option value="${vi}">${v.power} — ₹${v.price}</option>`).join('')}
+      </select>
+      <div class="spec-line" id="spec-${pi}"></div>
+      <div class="price-row">
+        <span class="price" id="price-${pi}">₹${p.variants[0].price}</span>
+        <button class="add-btn" onclick="addToCart(${pi})">Add to Quote</button>
+      </div>
+    </div>
+  `).join('');
+
+  PRODUCTS.forEach((p, pi) => {
+    const sel = document.getElementById(`variant-${pi}`);
+    sel.addEventListener('change', () => updateCardDisplay(pi));
+    updateCardDisplay(pi);
+  });
+}
+
+function updateCardDisplay(pi) {
+  const p = PRODUCTS[pi];
+  const vi = document.getElementById(`variant-${pi}`).value;
+  const v = p.variants[vi];
+  document.getElementById(`spec-${pi}`).textContent =
+    `${v.dim} · Cutout ${v.cutout} · ${v.lumens}`;
+  document.getElementById(`price-${pi}`).textContent = `₹${v.price}`;
+}
+
+function addToCart(pi) {
+  const p = PRODUCTS[pi];
+  const vi = document.getElementById(`variant-${pi}`).value;
+  const v = p.variants[vi];
+  cart.push({ name: p.name, power: v.power, price: v.price, image: p.image, hsn: p.hsn, qty: 1 });
+  renderCart();
+}
+
+function removeFromCart(idx) {
+  cart.splice(idx, 1);
+  renderCart();
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty = Math.max(1, cart[idx].qty + delta);
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cartItems');
+  document.getElementById('cartCount').textContent = cart.length;
+  if (cart.length === 0) {
+    container.innerHTML = '<div class="empty-cart">No items added yet.</div>';
+    document.getElementById('cartTotalRow').style.display = 'none';
+    return;
+  }
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="cart-item">
+      <img class="cart-thumb" src="${item.image}" alt="${item.name}">
+      <div class="details">
+        <div class="name">${item.name}</div>
+        <div class="variant">${item.power} · ₹${item.price}</div>
+        <div class="qty-row">
+          <button onclick="changeQty(${idx}, -1)">-</button>
+          <span>${item.qty}</span>
+          <button onclick="changeQty(${idx}, 1)">+</button>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div>₹${item.price * item.qty}</div>
+        <button class="remove" onclick="removeFromCart(${idx})">Remove</button>
+      </div>
+    </div>
+  `).join('');
+  const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  document.getElementById('cartTotal').textContent = `₹${total}`;
+  document.getElementById('cartTotalRow').style.display = 'flex';
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function buildPrintTemplate() {
+  const today = new Date();
+  const expiry = new Date();
+  expiry.setDate(today.getDate() + 14);
+  document.getElementById('q-date').textContent = formatDate(today);
+  document.getElementById('q-expiry').textContent = formatDate(expiry);
+  document.getElementById('q-quoteno').textContent = `EA/QUOTE/${today.getFullYear()}/001`;
+
+  const body = document.getElementById('q-table-body');
+  let grandTotal = 0;
+  body.innerHTML = cart.map((item, idx) => {
+    const lineTotal = item.price * item.qty;
+    grandTotal += lineTotal;
+    return `
+      <tr>
+        <td>${idx + 1}</td>
+        <td class="desc">${item.name} — ${item.power}</td>
+        <td><img class="q-thumb" src="${item.image}" alt=""></td>
+        <td>${item.hsn}</td>
+        <td>Nos</td>
+        <td>${item.qty}</td>
+        <td>₹${item.price.toLocaleString('en-IN')}</td>
+        <td>${GST_RATE}%</td>
+        <td>₹${lineTotal.toLocaleString('en-IN')}</td>
+      </tr>
+    `;
+  }).join('');
+  document.getElementById('q-grand-total').textContent = `₹${grandTotal.toLocaleString('en-IN')}`;
+}
+
+function printQuotation() {
+  if (cart.length === 0) {
+    alert('Add at least one item to the quotation before printing.');
+    return;
+  }
+  buildPrintTemplate();
+  window.print();
+}
+
+renderProducts();
+</script>
+
+</body>
+</html>
